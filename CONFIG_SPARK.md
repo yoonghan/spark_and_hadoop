@@ -30,17 +30,23 @@ export PATH=$PATH:$SPARK_HOME/bin
 SPARK_MASTER_HOST='RaspberryPiHadoopMaster'
 SPARK_MASTER_PORT=7707
 ```
-
-2. Run the master code with /sbin/start-master.sh
-3. Check http://localhost:8080 (or from the logs) to see the cluster status.
-4. Login to slave server and execute the same command as Step 1.
-5. Run the slave with the command
+2. Configure spark
+```
+mv $SPARK_HOME/conf/spark-defaults.conf.template $SPARK_HOME/conf/spark-defaults.conf
+spark.master    yarn
+```
+3. Run the master server with
+```
+$SPARK_HOME/sbin/start-master.sh
+```
+4. Check http://localhost:8080 (or from the logs) to see the cluster status.
+5. Login to slave server and execute the same command as Step 1. Then run the slave with the command
 ```
 /sbin/start-slave.sh  spark://RaspberryPiHadoopMaster:7707
 ```
 
 ### Run program
-**6066 port is rest call, you can read from console**
+**NOTE: 6066 port is rest call, you can read from console**
 ```
 //THIS COMMAND CANNOT WORK, the reason being is that the codes will start to read from hdfs automatically if HADOOP_CONF_DIR or YARN_CONF_DIR is in the directory.
 /Users/mmpkl05/personal/spark/spark-2.3.0-bin-hadoop2.7/bin/spark-submit --class Chapter2 --master spark://192.168.1.38:6066 --deploy-mode cluster --executor-memory 500m /home/hduser/spark-scala-program_2.11-0.0.1.jar /home/spark/README.md ./wordcount
@@ -82,12 +88,14 @@ spark-submit --class Chapter2 \
 http://192.168.1.38:8088/cluster
 
 6. To make hadoop faster, upload the spark file. We can add other jars to make it faster as well.
+```
 cd /opt/spark
 jar cv0f spark-libs.jar -C $SPARK_HOME/jars/ .
 hdfs dfs -mkdir /share/
 hdfs dfs -mkdir /share/lib
 hdfs dfs -put spark-libs.jar /share/lib/
-
+```
+```
 spark-submit --class Chapter2 \
     --master yarn \
     --deploy-mode cluster \
@@ -97,8 +105,9 @@ spark-submit --class Chapter2 \
     --queue default \
     --conf spark.yarn.archive=hdfs:///share/lib/spark-libs.jar \
     /home/hduser/spark-scala-program_2.11-0.0.1.jar /smallfile.txt /wordcount6
-
+```
 7. It is also an alternative to add all the jars, though i had not tried with these
+```
 spark-submit --class Chapter2 \
     --master yarn \
     --deploy-mode cluster \
@@ -109,17 +118,18 @@ spark-submit --class Chapter2 \
     --conf spark.yarn.archive=hdfs:///share/lib/spark-libs.jar \
     --conf spark.yarn.jars=hdfs://spark-scala-program_2.11-0.0.1.jar:spark_conf5554896961452842797.zip
     /home/hduser/spark-scala-program_2.11-0.0.1.jar /smallfile.txt /wordcount6
-
-  8. To make sure parrallelizm is correctly configured
-    ** Ensure the program has partition, e.g. sc.textFile(inputFile, partition)
-    ** --executor-cores 1 command should be more than 1.
-
-    time spark-submit --class Chapter2 \
-      --master yarn \
-      --deploy-mode cluster \
-      --driver-memory 512m \
-      --executor-memory 512m \
-      --executor-cores 2 \
-      --queue default \
-      --conf spark.yarn.archive=hdfs:///share/lib/spark-libs.jar \
-      /home/hduser/spark-scala-program_2.11-0.0.1.jar /smallfile.txt /wordcount10 2 yarn
+```
+8. To make sure parallelism is correctly configured
+**NOTE:  Ensure the program has partition, e.g. sc.textFile(inputFile, partition)**
+**NOTE: --executor-cores 1 command should be more than 1.**
+```
+  time spark-submit --class Chapter2 \
+    --master yarn \
+    --deploy-mode cluster \
+    --driver-memory 512m \
+    --executor-memory 512m \
+    --executor-cores 2 \
+    --queue default \
+    --conf spark.yarn.archive=hdfs:///share/lib/spark-libs.jar \
+    /home/hduser/spark-scala-program_2.11-0.0.1.jar /smallfile.txt /wordcount10 2 yarn
+```

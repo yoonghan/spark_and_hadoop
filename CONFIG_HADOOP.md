@@ -1,19 +1,27 @@
+# Apache Hadoop
+
+## Creating user
 1. `ssh pi@192.168.1.XX`.
 2. Create `adduser hduser`.
 3. Enter config:  `sudo raspi-config`
   * Change the hostname of the device to **rpi001** (under advanced options)
   * When exiting the config, choose to **reboot** so that changes take effect
-  | Server | Hostname |
-  | 192.168.1.38 | rpi001 | **
-  | 192.168.1.193 | rpi002 |
-  | 192.168.1.4 | rpi003| **
+| *Server* | *Hostname* |
+| 192.168.1.38 | rpi001 |
+| 192.168.1.193 | rpi002 |
+| 192.168.1.4 | rpi003 |
+4. Edit /etc/hosts
+| *Server* | *Hostname* |
+|  192.168.1.38  | RaspberryPiHadoopMaster |
+|  192.168.1.193  | RaspberryPiHadoopSlave1 |
+|  192.168.1.4  | RaspberryPiHadoopSlave2 |
+ **NOTE: It makes sense to have the hostname has RaspberryPiXXX instead of rpiXXX, reason being different hostname is to know what is configured**
 
-  Edit /etc/hosts
-  192.168.1.38  RaspberryPiHadoopMaster
-  192.168.1.193  RaspberryPiHadoopSlave1
-  192.168.1.4  RaspberryPiHadoopSlave2
-4. Install the correct version, hadoop is relying on protobuf 2.5.0
+## Building Hadoop
+**NOTE: Still failed at this part, so may need to relook into it.**
+1. Install the correct version, hadoop is relying on protobuf 2.5.0
 Download https://github.com/google/protobuf/releases/download/v2.5.0/protobuf-2.5.0.tar.gz (protobuf cpp)
+```
 tar xzvf protobuf-2.5.0.tar.gz
 cd protobuf-2.5.0
 ./configure --prefix=/usr
@@ -21,20 +29,19 @@ make
 make check
 sudo make install
 sudo apt-get -y install protobuf-compiler
+```
 
-Install software
+2. Install software
+```
 sudo apt-get install software-properties-common
-
-Install maven
 sudo apt-get update
 sudo apt-get -y install maven
-
-Install native library
 sudo apt-get -y install build-essential autoconf automake libtool cmake zlib1g-dev pkg-config libssl-dev
+```
 
-Download http://hadoop.apache.org/releases.html (hadoop src), this process takes very long for mvn.
+3. Install hadoop,  download http://hadoop.apache.org/releases.html (hadoop src), this process takes very long for mvn.
 Fix patching for ARM https://issues.apache.org/jira/browse/HADOOP-9320
-**TODO THIS**
+```
 cd hadoop-src/hadoop-common-project/hadoop-common/
 vi HadoopCommon.cmake
 ```
@@ -44,8 +51,8 @@ to endif() of CMAKE_SYSTEM_PROCESSOR MATCHES "^arm"
 vi HadoopJNI.cmake
 ```
 add code that was removed from HadoopCommon.cmake here, append into the last line!
-```
-One can refer to GIT difference in https://patch-diff.githubusercontent.com/raw/apache/hadoop/pull/224.patch
+
+4. One can refer to GIT difference in https://patch-diff.githubusercontent.com/raw/apache/hadoop/pull/224.patch
 Basically the change is telling this:
  1. cd hadoop-X-src/hadoop-common-project/hadoop-common/
  2. Edit HadoopCommon.cmake (vi/emac, your preferred editor)
@@ -56,7 +63,8 @@ Basically the change is telling this:
  7. Save and let it recompile
 
 
-In hadoop-X.X.X-src/pom.xml, change to <additionalparam>-Xdoclint:none</additionalparam>
+5. In hadoop-X.X.X-src/pom.xml, change to <additionalparam>-Xdoclint:none</additionalparam>
+```
 export MAVEN_OPTS="-Xmx3000m"
 export MAVEN_OPTS="-Xmx512m -XX:MaxPermSize=350m"
 nohup sudo mvn package -Pdist,native -DskipTests -Dtar
@@ -66,27 +74,32 @@ sudo chown -R hduser:hadoop /opt/hadoop/
 su hduser
 cd /opt/hadoop/bin
 hadoop checknative -a
+```
 
-41. (NEW) Execute:
+6. If all fail use this method:
+```
 wget https://archive.apache.org/dist/hadoop/core/hadoop-2.7.1/hadoop-2.7.1.tar.gz
 wget http://files.minibig.io/minipublic/hadoop-2.7.1-native-libs-armv7l.tar.gz
-Untar both with
-```
-tar xvfz
-```
+
+tar xvfz *.tar.gz
+
 sudo cp -R hadoop-2.7.1 /opt/hadoop
 mv hadoop-native/ /opt/hadoop/native
 sudo chown -R hduser.hadoop /opt/hadoop/
+```
 
-
-5. Put keygen
-#su hduser of RaspberryPiHadoopSlave1
- $ ssh-keygen -t rsa
- $ ssh-copy-id -i ~/.ssh/id_rsa.pub hduser@RaspberryPiHadoopMaster
- $ ssh-copy-id -i ~/.ssh/id_rsa.pub hduser@RaspberryPiHadoopSlave1
- $ ssh-copy-id -i ~/.ssh/id_rsa.pub hduser@RaspberryPiHadoopSlave2
-6. Configure the followings
-In /etc/bash.bashrc, add to top of file:
+##Creating Access
+1. Put keygen by sudo to RaspberryPiHadoopSlave1
+```
+ su hduser of
+ ssh-keygen -t rsa
+ //ssh-copy-id -i ~/.ssh/id_rsa.pub hduser@RaspberryPiHadoopMaster
+ ssh-copy-id -i ~/.ssh/id_rsa.pub hduser@RaspberryPiHadoopSlave1
+ ssh-copy-id -i ~/.ssh/id_rsa.pub hduser@RaspberryPiHadoopSlave2
+```
+2. Do the same to other slave servers.
+3. Configure the followings in /etc/bash.bashrc, add to top of file:
+```
 export JAVA_HOME=$(readlink -f /usr/bin/java|sed "s:jre/bin/java::")
 export HADOOP_INSTALL=/opt/hadoop
 export PATH=$PATH:$HADOOP_INSTALL/bin
@@ -106,9 +119,10 @@ export LD_LIBRARY_PATH="$HADOOP_INSTALL/native/"
 hadoop_env.sh (/opt/hadoop/etc/hadoop/)
 export JAVA_HOME=/usr/lib/jvm/jdk-8-oracle-arm32-vfp-hflt
 export HADOOP_OPTS="$HADOOP_OPTS -Djava.library.path=$HADOOP_INSTALL/native -Djava.net.preferIPv4Stack=true"
+```
 
-
-core-site.xml
+4. Change core-site.xml
+```
 <configuration>
   <property>
     <name>hadoop.tmp.dir</name>
@@ -119,8 +133,10 @@ core-site.xml
     <value>hdfs://RaspberryPiHadoopMaster:54310</value>
   </property>
 </configuration>
+```
 
-yarn-site.xml
+5. Change yarn-site.xml
+```
 <configuration>
     <property>
         <name>yarn.resourcemanager.resource-tracker.address</name>
@@ -175,8 +191,10 @@ yarn-site.xml
         <value>2.1</value>
     </property>
 </configuration>
+```
 
-mapred-site.xml
+6. mapred-site.xml
+```
 <configuration>
     <property>
         <name>mapreduce.framework.name</name>
@@ -227,54 +245,61 @@ mapred-site.xml
         <value>4</value>
     </property>
 </configuration>
-
+```
 7. Clear cluster
+```
 sudo mkdir -p /hdfs/tmp
 sudo chown hduser:hadoop /hdfs/tmp
 sudo chmod 750 /hdfs/tmp
 hdfs namenode -format
+```
 
-8. Start hadoop, there are issue though esp asking for SecondaryNameNode and /home/hduser/hadoop-2.7.5/lib/native/libhadoop.so.1.0.0
+##Starting hadoop as Standalone
+1. Start hadoop
+```
 start-dfs.sh
 start-yarn.sh
+```
 
-9. Check everything is running via
+2. Check everything is running via
+```
 jps
+```
 
-10. If Jps run check if all resources are running
-1920 ResourceManager
-2066 Jps
-1480 NameNode
-1578 DataNode
-2013 NodeManager
-1775 SecondaryNameNode
+3. If Jps run check if all resources are running
+> 1920 ResourceManager
+> 2066 Jps
+> 1480 NameNode
+> 1775 SecondaryNameNode
 
 
-11. Server journal
+4. Server  to check all the configuration are correct
 http://RaspberryPiHadoopMaster:8088/cluster - main
 http://RaspberryPiHadoopMaster:50090/status.html
 http://RaspberryPiHaddopMaster:50070/ - namenode # It it in hdfs-site.xml
 http://RaspberryPiHadoopMaster:50075/ - datanode information
 
-12. Stop all
+5. Stop all
+```
 stop-dfs.sh
 stop-yarn.sh
+```
 
-13. Create /opt/hadoop/slaves
+6. Edit /opt/hadoop/slaves, and add only the slaves, adding master itself will add it to the server.
+```
 RaspberryPiHadoopSlave1
 RaspberryPiHadoopSlave2
-Create /opt/hadoop/master
-RaspberryPiHadoopMaster
+```
 
-14. Synch codes
+7. Synch codes, so that all servers will have the same information.
 rsync -avxP /opt/hadoop/ hduser@RaspberryPiHadoopSlave1:/opt/hadoop/
 rsync -avxP /opt/hadoop/ hduser@RaspberryPiHadoopSlave2:/opt/hadoop/
 
-15. Make sure all environments of bashrc.bash are copied over to all nodes.
-and
-**When access RaspberryPiHadoopMaster:50070 and the node is 0, make sure ALL NODES core-site is pointing the correct fs.defaultFS**
+8. Make sure all environments of bashrc.bash are copied over to all nodes.
+**NOTE: When access RaspberryPiHadoopMaster:50070 and it shows 'node is 0', ensure all the NODES have the correct fs.defaultFS in core-site**
 
-core-site.xml
+9. CHange core-site.xml, make sure these are copied to ALL NODES including slaves.
+```
 <configuration>
   <property>
     <name>hadoop.tmp.dir</name>
@@ -285,8 +310,10 @@ core-site.xml
     <value>hdfs://RaspberryPiHadoopMaster:54310</value>
   </property>
 </configuration>
+```
 
-hdfs-site.xml
+9. Edit hdfs-site.xml
+```
 <configuration>
   <property>
     <name>dfs.replication</name>
@@ -301,8 +328,10 @@ hdfs-site.xml
       <value>RaspberryPiHadoopMaster:50070</value>
   </property>
 </configuration>
+```
 
-mapred-site.xml
+10. Edit mapred-site.xml
+```
 <configuration>
     <property>
         <name>mapreduce.job.tracker</name>
@@ -357,39 +386,50 @@ mapred-site.xml
         <value>4</value>
     </property>
 </configuration>
+```
 
 
-16. In both data node servers Create
+11. In both data node servers create
+```
 sudo mkdir hadoop
 sudo chown -R hduser:hadoop hadoop/
 sudo mkdir -p /hdfs/tmp
 sudo chown hduser:hadoop /hdfs/tmp
 sudo chmod 750 /hdfs/tmp
+```
 
-17. Start with
+12. Start with
+```
 start-dfs.sh
 start-yarn.sh
+```
 
-//Make sure these are started
-1413 NodeManager
-838 NameNode
-1451 Jps
-1085 SecondaryNameNode
-942 DataNode
-1311 ResourceManager
+13. Run JPS and Make sure these are started
+> NodeManager
+> Jps
+> SecondaryNameNode
+> ResourceManager
 
-18. Download
+14. Login into individual slaves and make sure these are started
+> NameNode
+> DataNode
+
+15. Download examples
+```
 wget http://repo1.maven.org/maven2/org/apache/hadoop/hadoop-mapreduce-examples/2.7.1/hadoop-mapreduce-examples-2.7.1.jar
 hadoop fs -put mediumfile.txt /mediumfile.txt
 hadoop fs -put smallfile.txt /smallfile.txt
 time hadoop jar hadoop-mapreduce-examples-2.7.1.jar wordcount /smallfile.txt /smallfile-out
 time hadoop jar hadoop-mapreduce-examples-2.7.1.jar wordcount /mediumfile.txt /mediumfile-out
+```
 **If encountered the error "The number of live datanodes 2 has reached the minimum number 0. Safe mode will be turned off automatically once the thresholds have been reached." - this means the node is no longer synch the best way is to do a rm -rf /hdfs/tmp/* ON all servers. Then re-run hdfs namenode -format on RaspberryPiHadoopMaster ***
 
 
-19. Monitor with
+16. Monitor with
+```
 hdfs dfsadmin -report
-//Make sure the data nodes alive. It should display something like
+```
+If all is correct it will display live nodes
 ```
 Configured Capacity: 30443814912 (28.35 GB)
 Present Capacity: 16284471296 (15.17 GB)
@@ -440,12 +480,8 @@ Xceivers: 1
 Last contact: Sun Apr 08 14:29:23 UTC 2018
 ```
 
-20. You can see the task running in yarn via
+17. You can see the task running in yarn only if history is added
 ```
 mr-jobhistory-daemon.sh --config $HADOOP_CONF_DIR start historyserver
 ```
 Then wait 2 minutes before using browser to query http://192.168.1.38:19888
-
-SparkConf
-1. mv $SPARK_HOME/conf/spark-defaults.conf.template $SPARK_HOME/conf/spark-defaults.conf
-2. spark.master    yarn
