@@ -50,6 +50,8 @@ $SPARK_HOME/sbin/start-master.sh
 ```
 //THIS COMMAND CANNOT WORK, the reason being is that the codes will start to read from hdfs automatically if HADOOP_CONF_DIR or YARN_CONF_DIR is in the directory.
 /Users/mmpkl05/personal/spark/spark-2.3.0-bin-hadoop2.7/bin/spark-submit --class Chapter2 --master spark://192.168.1.38:6066 --deploy-mode cluster --executor-memory 500m /home/hduser/spark-scala-program_2.11-0.0.1.jar /home/spark/README.md ./wordcount
+
+spark-submit --class Chapter2 --master spark://192.168.1.38:6066 --deploy-mode cluster --executor-memory 500m /home/hduser/spark-scala-program_2.11-0.0.1.jar /smallfile.txt /wordcount4 3 spark://192.168.1.38:6066
 ```
 1. Run the spark on the REST port (this can be check from the UI console 8080)
 2. Copy the JAR files into the slave pc.

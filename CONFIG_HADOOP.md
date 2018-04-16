@@ -6,15 +6,21 @@
 3. Enter config:  `sudo raspi-config`
   * Change the hostname of the device to **rpi001** (under advanced options)
   * When exiting the config, choose to **reboot** so that changes take effect
+
 | *Server* | *Hostname* |
+| ---|:---:| ---:|
 | 192.168.1.38 | rpi001 |
 | 192.168.1.193 | rpi002 |
 | 192.168.1.4 | rpi003 |
+
 4. Edit /etc/hosts
+
 | *Server* | *Hostname* |
+| ---|:---:|
 |  192.168.1.38  | RaspberryPiHadoopMaster |
 |  192.168.1.193  | RaspberryPiHadoopSlave1 |
 |  192.168.1.4  | RaspberryPiHadoopSlave2 |
+
  **NOTE: It makes sense to have the hostname has RaspberryPiXXX instead of rpiXXX, reason being different hostname is to know what is configured**
 
 ## Building Hadoop
@@ -88,7 +94,7 @@ mv hadoop-native/ /opt/hadoop/native
 sudo chown -R hduser.hadoop /opt/hadoop/
 ```
 
-##Creating Access
+## Creating Access
 1. Put keygen by sudo to RaspberryPiHadoopSlave1
 ```
  su hduser of
@@ -254,7 +260,7 @@ sudo chmod 750 /hdfs/tmp
 hdfs namenode -format
 ```
 
-##Starting hadoop as Standalone
+## Starting hadoop as Standalone
 1. Start hadoop
 ```
 start-dfs.sh
@@ -266,18 +272,21 @@ start-yarn.sh
 jps
 ```
 
-3. If Jps run check if all resources are running
-> 1920 ResourceManager
-> 2066 Jps
-> 1480 NameNode
-> 1775 SecondaryNameNode
+3. Run Jps to check resources that are running
+```
+1920 ResourceManager
+2066 Jps
+1480 NameNode
+1775 SecondaryNameNode
+```
 
+4. Web interfaces to check all the configuration are correct
 
-4. Server  to check all the configuration are correct
-http://RaspberryPiHadoopMaster:8088/cluster - main
-http://RaspberryPiHadoopMaster:50090/status.html
-http://RaspberryPiHaddopMaster:50070/ - namenode # It it in hdfs-site.xml
-http://RaspberryPiHadoopMaster:50075/ - datanode information
+| Url | Purpose |
+|:---:|:---:|
+| http://RaspberryPiHadoopMaster:8088/cluster | Check Jobs |
+| http://RaspberryPiHadoopMaster:50090/| Check Namenode |
+| http://RaspberryPiHadoopMaster:50070/ | Check Yarn and Logs |
 
 5. Stop all
 ```
@@ -405,14 +414,18 @@ start-yarn.sh
 ```
 
 13. Run JPS and Make sure these are started
-> NodeManager
-> Jps
-> SecondaryNameNode
-> ResourceManager
+```
+NodeManager
+Jps
+SecondaryNameNode
+ResourceManager
+```
 
 14. Login into individual slaves and make sure these are started
-> NameNode
-> DataNode
+```
+NameNode
+DataNode
+```
 
 15. Download examples
 ```
